@@ -1,23 +1,21 @@
-	
-from distutils.util import run_2to3
 import numpy as np
 import os
 import shutil
 import sys
 import time
 import subprocess
-import matplotlib.pyplot as plt
 
 
+mode        = "run" #run
 executable  = "run.sh"
 inputfile   = "dvr.inp"
 
-NALF        = 60
+NALF        = 10
 MAX3D       = 2000
 
 De1         = 0.2
 De2         = 0.2
-NPNTfixed   = 50
+NPNTfixed   = 10
 omegafixed  = 0.0305
 refixed     = 0.35
 
@@ -29,11 +27,11 @@ omegamin    = 0.0085
 omegamax    = 0.0085
 Nomega      = 1
 
-NPNT_max    = 60
-NPNT_min    = 50
+NPNT_max    = 10
+NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
-mode        = "rms" # "band_origin"
+convmode    = "rms" # "band_origin"
 nlevels     = 10    # number of lowest J=0 energy levels taken in RMS calculation
 
 scan_coord = "1" # which of the radial coordinates we take as active in the scan
@@ -59,7 +57,7 @@ def gen_params_dict(*args):
     params['NPNT_max']  = NPNT_max
     params['NPNT_incr'] = NPNT_incr
     params['thr']       = thr
-    params['mode']      = mode
+    params['convmode']      = convmode
     params['nlevels']   = nlevels
 
 
@@ -93,7 +91,7 @@ def gen_grid3D():
                                 NPNT_min,   
                                 NPNT_incr,
                                 thr,         
-                                mode,     
+                                convmode,     
                                 nlevels )
 
     rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
@@ -145,7 +143,8 @@ def gen_grid3D():
                 #print(stdout)
                 #print(stderr)
                 os.chdir(path)
-        
+
+    return params,rlist,omegalist,npntlist     
 
 def gen_input3D(params,r,w,npnt):
     with open(inputfile,'w') as inp:
@@ -171,8 +170,75 @@ def gen_input3D(params,r,w,npnt):
             inp.write('{:11.2f}'.format(r) +     '{:19.1f}'.format(De2) +  '{:23.4f}'.format(w) +"\n") #r2 coordinate re, De, we
         else:
             raise ValueError("Incorrect name of the radial coordinate")
-       
 
+
+def postprocess():
+    """This function exctracts appropriate energy levels from DVR3D output files and calculates appropriate RMSDs
+    """
+
+    params = gen_params_dict(   NALF,    
+                                MAX3D,     
+                                De1,
+                                De2,
+                                NPNTfixed,
+                                omegafixed,
+                                refixed,  
+                                rmin,   
+                                rmax,   
+                                Nr,     
+                                omegamin,
+                                omegamax,    
+                                Nomega,   
+                                NPNT_max,   
+                                NPNT_min,   
+                                NPNT_incr,
+                                thr,         
+                                convmode,     
+                                nlevels )
+
+    rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
+    omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
+    npntlist    = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
+
+
+    path        = os.getcwd()
+    rmsd = np.zeros((len(rlist),len(omegalist),len(npntlist)),dtype = float)
+
+    for ir,r in enumerate(rlist):
+
+        for iw,w in enumerate(omegalist):
+
+            for inpnt, npnt in enumerate(npntlist):
+
+                if npnt >= 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt
+                elif npnt < 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
+                else:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
+
+                print("dirname: " + dirname)
+                os.chdir(path+"/runs/"+dirname)
+
+                with open("dvr.out",'r') as outputfile:
+                    for line in outputfile:
+                        words = line.split()
+                        print()
+                        if words[0] == "Bands" and words[1] == "origins":
+                            print(words)
+                            #exit()
+                            #for ilevel in range(params['nlevels']):
+                            #    outputfile.next()
+
+    
+            #for i in range(energy.shape[0]):
+            #    rmsd[ir,iw] += (energy[])
+
+    return rmsd
 
 if __name__ == '__main__':
-    gen_grid3D()
+
+    if mode == "run":
+        params,rlist,omegalist,npntlist = gen_grid3D()
+    elif mode == "analyze":
+        postprocess()
