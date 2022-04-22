@@ -204,7 +204,7 @@ def postprocess():
     path        = os.getcwd()
     elevels    = np.zeros((int(params['nlevels']/5),5),dtype=float)
     energies    = np.zeros((len(rlist),len(omegalist),len(npntlist),params['nlevels']),dtype = float)
-    rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)),dtype = float)
+    rmsd        = np.zeros((len(rlist),len(omegalist),params['nlevels']),dtype = float)
     epoint      = np.zeros((4,5))
 
     for ir,r in enumerate(rlist):
@@ -246,16 +246,18 @@ def postprocess():
                 print(energies.shape)
                 print(elevels_flat.shape)
                 energies[ir,iw,inpnt,:] = elevels_flat
-            print(energies.shape[2])
-            exit()
+            
+            Ndiff = energies.shape[2]-1 #number of differences taken wrt NPNT parameter
+            
             for h in range(params['nlevels']):
-                for k in range(energies.shape[2]-1):
+                for k in range(Ndiff):
                     rmsd[ir,iw,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
-                    rmsd /= energies.shape[2]
-                    rmsd = np.sqrt(rmsd)
+                rmsd[ir,iw,h] /= Ndiff
+                rmsd[ir,iw,h] = np.sqrt(rmsd[ir,iw,h])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,h]))
-    print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(np.average(rmsd,axis=2)))
-    return rmsd
+            mean_rmsd = np.average(rmsd,axis=2)
+    print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(mean_rmsd))
+    return rmsd,mean_rmsd
 
 if __name__ == '__main__':
 
