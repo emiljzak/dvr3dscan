@@ -25,14 +25,14 @@ Nr          = 4
 
 omegamin    = 0.0085
 omegamax    = 0.0085
-Nomega      = 1
+Nomega      = 2
 
-NPNT_max    = 20
+NPNT_max    = 15
 NPNT_min    = 10
-NPNT_incr   = 10    # increment for NPNT
+NPNT_incr   = 1    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "band_origin"
-nlevels     = 5    # number of lowest J=0 energy levels taken in RMS calculation
+nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculation. Note that levels are printed in 4-columns format in DVR3D.
 
 scan_coord = "1" # which of the radial coordinates we take as active in the scan
 
@@ -202,9 +202,11 @@ def postprocess():
 
 
     path        = os.getcwd()
-    energies = np.zeros((len(rlist),len(omegalist),len(npntlist),nlevels),dtype = float)
-    rmsd = np.zeros((len(rlist),len(omegalist),len(npntlist)),dtype = float)
-    epoint = np.zeros((4,5))
+    elevels    = np.zeros((int(params['nlevels']/5),5),dtype=float)
+    energies    = np.zeros((len(rlist),len(omegalist),len(npntlist),params['nlevels']),dtype = float)
+    rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)),dtype = float)
+    epoint      = np.zeros((4,5))
+
     for ir,r in enumerate(rlist):
 
         for iw,w in enumerate(omegalist):
@@ -228,23 +230,31 @@ def postprocess():
                         #print(words)
 
                         if flag == 1 and len(words)>0:
-                            energylist.append(words)    
+                            energylist.append(words)
+
                         if len(words)>0 and words[0] == "Band" and words[1] == "origins":
-                            flag =1
-                            energylist = []
+                            flag        = 1
+                            energylist  = []
 
-                for i in range(4):
-                    epoint[i] = np.asarray(energylist[i],dtype=float)
+                for ielem,elem in enumerate(energylist):
+                    if ielem*5 < params['nlevels']:
+                        #print(elem)
+                        for ienergy,energy in enumerate(elem):
+                            elevels[ielem,ienergy] = energy
 
-                energies[ir,iw,inpnt,:] = epoint[0]
-                print(energies)
-            
-            for k in range(energies.shape[3]-1):
-                rmsd[ir,iw,inpnt] += (energies[ir,iw,inpnt,k+1]-energies[ir,iw,inpnt,k])**2
-                rmsd /= energies.shape[3]
-                rmsd = np.sqrt(rmsd)
-            print(rmsd[ir,iw,inpnt])
-
+                elevels_flat = elevels.reshape(-1)
+                print(energies.shape)
+                print(elevels_flat.shape)
+                energies[ir,iw,inpnt,:] = elevels_flat
+            print(energies.shape[2])
+            exit()
+            for h in range(params['nlevels']):
+                for k in range(energies.shape[2]-1):
+                    rmsd[ir,iw,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
+                    rmsd /= energies.shape[2]
+                    rmsd = np.sqrt(rmsd)
+                print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,h]))
+    print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(np.average(rmsd,axis=2)))
     return rmsd
 
 if __name__ == '__main__':
