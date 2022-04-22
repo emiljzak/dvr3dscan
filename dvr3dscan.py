@@ -227,13 +227,13 @@ def gen_grid3D_partitions():
     global_grid = []
     batch_grid = [] #grid for single batch
 
-
-    for ip in range(batch_size):
-
-        for s in range(pack_size):
-    
-            batch_grid.append([G[s,0],G[s,1],G[s,2]])
-    
+    counter = 0
+    for i in range(Nbatches):
+        for j in range(Npacks):
+            for ip in range(pack_size):    
+                batch_grid.append(G[counter,0:3])
+                counter +=1
+                print(counter)
         global_grid.append(batch_grid)
     print(global_grid)
     exit()
