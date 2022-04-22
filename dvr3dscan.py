@@ -6,7 +6,7 @@ import time
 import subprocess
 
 
-mode        = "run" #run
+mode        = "analyze" #run
 executable  = "run.sh"
 inputfile   = "dvr.inp"
 
@@ -27,7 +27,7 @@ omegamin    = 0.0085
 omegamax    = 0.0085
 Nomega      = 1
 
-NPNT_max    = 10
+NPNT_max    = 20
 NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
@@ -221,15 +221,20 @@ def postprocess():
                 os.chdir(path+"/runs/"+dirname)
 
                 with open("dvr.out",'r') as outputfile:
+                    flag = 0
                     for line in outputfile:
                         words = line.split()
-                        print()
-                        if words[0] == "Bands" and words[1] == "origins":
-                            print(words)
-                            #exit()
-                            #for ilevel in range(params['nlevels']):
-                            #    outputfile.next()
+                        #print(words)
 
+                        if flag == 1 and len(words)>0:
+                            energylist.append(words)    
+                        if len(words)>0 and words[0] == "Band" and words[1] == "origins":
+                            flag =1
+                            energylist = []
+
+
+       
+                    print(energylist)
     
             #for i in range(energy.shape[0]):
             #    rmsd[ir,iw] += (energy[])
