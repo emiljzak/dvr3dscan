@@ -1,8 +1,4 @@
 	
-    
-from concurrent.futures import thread
-from socket import RCVALL_MAX
-from typing import NoReturn
 import numpy as np
 import os
 import shutil
@@ -12,6 +8,8 @@ import subprocess
 import matplotlib.pyplot as plt
 
 
+executable  = "run.sh"
+inputfile   = "dvr.inp"
 
 NALF        = 80
 MAX3D       = 2000
@@ -19,13 +17,13 @@ De          = 0.3
 
 rmin        = 0.25
 rmax        = 0.6
-Nr          = 5
+Nr          = 1
 
 omegamin    = 0.01
 omegamax    = 0.2
-Nomega      = 4
+Nomega      = 1
 
-NPNT_max    = 100
+NPNT_max    = 30
 NPNT_min    = 20
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
@@ -33,7 +31,7 @@ mode        = "rms" # "band_origin"
 nlevels     = 10    # number of lowest J=0 energy levels taken in RMS calculation
 
 
-def gen_params_dict(**kwargs):
+def gen_params_dict(*args):
 
     params = {}
 
@@ -56,12 +54,12 @@ def gen_params_dict(**kwargs):
     return params
 
 def gen_grid2D():
+
     print("____DVR3D calculations on a 3D grid of basis set parameters___")
 
-    path = os.getcwd()
-    print ("The current working directory is %s" % path)
-    
+    path        = os.getcwd()
     START_FILES = os.listdir(path+"/START")
+    print ("The current working directory is %s" % path)
 
     params = gen_params_dict(   NALF,    
                                 MAX3D,     
@@ -81,96 +79,68 @@ def gen_grid2D():
 
     rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
     omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
-    omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
+    npntlist   = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
 
 
     for ir,r in enumerate(rlist):
 
         for iw,w in enumerate(omegalist):
 
+            for inpnt, npnt in enumerate(npntlist):
 
-            dirname = "beta%6.4f"%beta+"e%6.2E"%e0
-
-            try:
-                os.mkdir(outputpath+"/"+dirname)
-            except OSError:
-                print ("Creation of the directory %s failed" % outputpath)
-            else:
-                print ("Successfully created the directory %s " % outputpath)
-
-
-            #generate pulse
-
-            if state_to_state == False:
-
-                print("state_to_state = False")
-                print("Field type selected: ", field_type)
-                print("Field sub-type selected: ", field_subtype)
-                print("Envelope type selected: ", envelope_type)
-                tres=50
-                params['tres'] = tres
-                # generate envelope
-                fenv= np.zeros(len(params['t_richmol']))
-                fenv = gp.calc_envelope(params,param_mode,envelope_type)
-
-                # generate field
-                field = np.zeros(shape=(len(params['t_richmol']),4))
-                field = gp.calc_field(params,param_mode,field_type,field_subtype,fenv)
-                #print(field)
-
-                # print field
-                print("saving field to file:",output)
-                fl = open(output,'w')
-                for elem in field:
-                    fl.write("%12.4f"%elem[0]+"  %16.8e"%elem[1]+"  %16.8e"%elem[2]+" %16.8e"%elem[3]+"\n")
-                fl.close()
-
-            elif state_to_state == True:
-                print("state_to_state = True")
-
-                if path_from_file == True:
-                    print("Path read from file",params['pathfile'])
-                    tres=gt.gen_tres(field_type,state_to_state,path_from_file,optimize_path,params)
-                    params['tres'] = tres
-                    print("state_to_state = True")
-                    print("Field type selected: ", field_type)
-                    print("Field sub-type selected: ", field_subtype)
-                    print("Envelope type selected: ", envelope_type)
-
-                    # generate envelope
-                    fenv= np.zeros(len(params['t_richmol']))
-                    fenv = gp.calc_envelope(params,param_mode,envelope_type)
-
-                    # generate field
-                    field = np.zeros(shape=(len(params['t_richmol']),4))
-                    field = gp.calc_field(params,param_mode,field_type,field_subtype,fenv)
-                    #print(field)
-
-                    # print field
-                    print("saving field to file:",output)
-                    fl = open(output,'w')
-                    for elem in field:
-                        fl.write("%12.4f"%elem[0]+"  %16.8e"%elem[1]+"  %16.8e"%elem[2]+" %16.8e"%elem[3]+"\n")
-                    fl.close()
-
-
-                elif path_from_file == False:
-                    print("Path read manually")
+                if npnt >= 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt 
+                elif npnt < 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
                 else:
-                    print("Error: incorrect state_to_state value")
-                    exit()
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
 
-            else:
-                print("Error: incorrect state_to_state value")
-                exit()
+                print("dirname: " + dirname)
 
+                try:
+                    os.mkdir(path+"/runs/"+dirname)
+                except OSError:
+                    print ("Creation of the directory %s failed" % dirname)
+                else:
+                    print ("Successfully created the directory %s " % dirname)
 
-
-            for f in START_FILES: #copy all files from START to the active directory
-                shutil.copy2(path+"/START/"+f, outputpath+"/"+dirname)
-            shutil.copy2(path+"/elfield.txt",outputpath+"/"+dirname) #copy elfield.txt to the active directory
-
-            os.chdir(outputpath+"/"+dirname)
-            subprocess.call("./master_script.sh oc-run.inp", shell=True) 
-            os.chdir(path)
         
+                for f in START_FILES: #copy all files from START to the active directory
+                    shutil.copy2(path+"/START/"+f, path+"/runs/"+dirname)
+
+
+                os.chdir(path+"/runs/"+dirname)
+                gen_input(params,r,w,npnt)
+                outputfile = open('dvr.out','w')
+                outputfile.write('Generated with dvr3dscan\n')
+                outputfile.flush()  
+
+                errorfile = open('dvr.err','w')
+                errorfile.write('Generated with dvr3dscan\n')
+                errorfile.flush()  
+                print("executing command: "+ executable)
+                proc_dvrrun = subprocess.Popen(["./run.sh"], stdout=outputfile, stderr=errorfile, shell=True)
+
+                #p2 = subprocess.Popen(["ls", "-l"], stdout=subprocess.PIPE)
+                #stdout, stderr = p2.communicate()
+                #print(stdout)
+                #print(stderr)
+                os.chdir(path)
+        
+
+def gen_input(params,r,w,npnt):
+    with open(inputfile,'w') as inp:
+        inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
+        inp.write("    3"+"\n")
+        inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
+        inp.write(" N2O: JACOBI NON-SYMMETRISED COORDINATES, MASSES 14.003074 15.994915 NUCL 13.995394 15.986138"+"\n")
+        inp.write("\n")
+        inp.write("      14.003074          15.994915             14.003074"+"\n")
+        inp.write("      14.003074          15.994915             14.003074"+"\n")                                                                      
+        inp.write("      10005000.0"+"\n")
+        inp.write("       4.10                0.2                 0.0085"+"\n") #r1 coordinate re, De, we
+        inp.write("       0.35                0.2                 0.0305"+"\n") #r2 coordinate re, De, we
+
+
+if __name__ == '__main__':
+    gen_grid2D()
