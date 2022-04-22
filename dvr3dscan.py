@@ -1,4 +1,5 @@
 	
+from distutils.util import run_2to3
 import numpy as np
 import os
 import shutil
@@ -13,7 +14,13 @@ inputfile   = "dvr.inp"
 
 NALF        = 80
 MAX3D       = 2000
-De          = 0.3
+
+De1         = 0.2
+De2         = 0.2
+NPNTfixed   = 50
+omegafixed  = 0.03
+refixed     = 0.35
+
 
 rmin        = 0.25
 rmax        = 0.6
@@ -30,6 +37,7 @@ thr         = 1.0   # convergence threshold in cm^-1
 mode        = "rms" # "band_origin"
 nlevels     = 10    # number of lowest J=0 energy levels taken in RMS calculation
 
+scan_coord = "1" # which of the radial coordinates we take as active in the scan
 
 def gen_params_dict(*args):
 
@@ -37,7 +45,11 @@ def gen_params_dict(*args):
 
     params['NALF']      = NALF
     params['MAX3D']     = MAX3D
-    params['De']        = De        
+    params['De1']       = De1
+    params['De2']       = De2
+    params['NPNTfixed'] = NPNTfixed
+    params['omegafixed']= omegafixed
+    params['refixed']   = refixed
     params['rmin']      = rmin
     params['rmax']      = rmax
     params['Nr']        = Nr
@@ -51,10 +63,14 @@ def gen_params_dict(*args):
     params['mode']      = mode
     params['nlevels']   = nlevels
 
+
     return params
 
-def gen_grid2D():
-
+def gen_grid3D():
+    """This function generates a 3D grid of basis set parameters, produces appropriate input files and submits DVR3D jobs.
+    
+        Note: for non-symmetric triatomic molecules (N2O) two separate sets of radial basis set parameters must be used. A 6D grid might be needed to find optimal radial basis parameters. 
+    """
     print("____DVR3D calculations on a 3D grid of basis set parameters___")
 
     path        = os.getcwd()
@@ -63,7 +79,11 @@ def gen_grid2D():
 
     params = gen_params_dict(   NALF,    
                                 MAX3D,     
-                                De,  
+                                De1,
+                                De2,
+                                NPNT1,
+                                omega2,
+                                re2,  
                                 rmin,   
                                 rmax,   
                                 Nr,     
@@ -82,18 +102,18 @@ def gen_grid2D():
     npntlist   = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
 
 
-    for ir,r in enumerate(rlist):
+    for ir1,r1 in enumerate(rlist):
 
-        for iw,w in enumerate(omegalist):
+        for iw1,w1 in enumerate(omegalist):
 
-            for inpnt, npnt in enumerate(npntlist):
+            for inpnt1, npnt1 in enumerate(npntlist):
 
-                if npnt >= 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt 
-                elif npnt < 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
+                if npnt1 >= 100:
+                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%3d"%npnt1
+                elif npnt1 < 100:
+                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%2d"%npnt1
                 else:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
+                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%1d"%npnt1
 
                 print("dirname: " + dirname)
 
@@ -110,7 +130,7 @@ def gen_grid2D():
 
 
                 os.chdir(path+"/runs/"+dirname)
-                gen_input(params,r,w,npnt)
+                gen_input3D(params,r1,w1,npnt1)
                 exit()
                 outputfile = open('dvr.out','w')
                 outputfile.write('Generated with dvr3dscan\n')
@@ -129,20 +149,26 @@ def gen_grid2D():
                 os.chdir(path)
         
 
-def gen_input(params,r,w,npnt):
+def gen_input3D(params,r2,w2,npnt2):
     with open(inputfile,'w') as inp:
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
         #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
-        inp.write( '{:5d}'.format(npnt) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(npnt) + "\n") #kmin = 0 implicitly, see input explanation
+        inp.write('{:5d}'.format(npnt2) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(params['NPNT1']) + "\n") #kmin = 0 implicitly, see input explanation
         inp.write(" N2O: JACOBI NON-SYMMETRISED COORDINATES, MASSES 14.003074 15.994915 NUCL 13.995394 15.986138"+"\n")
         inp.write("\n")
         inp.write("      14.003074          15.994915             14.003074"+"\n")
         inp.write("      14.003074          15.994915             14.003074"+"\n")                                                                      
         inp.write("      10005000.0"+"\n")
-        inp.write("       4.10                0.2                 0.0085"+"\n") #r1 coordinate re, De, we
-        inp.write("       0.35                0.2                 0.0305"+"\n") #r2 coordinate re, De, we
+        if scan_coord == "1":
+            inp.write('{:11.2f}'.format(r1) +     '{:19.1f}'.format(De1) +  '{:23.4f}'.format(w1) +"\n") #r1 coordinate re, De, we
+            inp.write('{:11.2f}'.format(params['re2']) +  '{:19.1f}'.format(De2) +   '{:23.4f}'.format(params['omega2']) +"\n") #r2 coordinate re, De, we
+        elif scan_coord == "2":
+
+        else:
+            raise ValueError("Incorrect name of the radial coordinate")
+       
 
 
 if __name__ == '__main__':
-    gen_grid2D()
+    gen_grid3D()
