@@ -111,6 +111,7 @@ def gen_grid2D():
 
                 os.chdir(path+"/runs/"+dirname)
                 gen_input(params,r,w,npnt)
+                exit()
                 outputfile = open('dvr.out','w')
                 outputfile.write('Generated with dvr3dscan\n')
                 outputfile.flush()  
@@ -132,7 +133,8 @@ def gen_input(params,r,w,npnt):
     with open(inputfile,'w') as inp:
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
-        inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
+        #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
+        inp.write( '{:5d}'.format(npnt) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(npnt) + "\n") #kmin = 0 implicitly, see input explanation
         inp.write(" N2O: JACOBI NON-SYMMETRISED COORDINATES, MASSES 14.003074 15.994915 NUCL 13.995394 15.986138"+"\n")
         inp.write("\n")
         inp.write("      14.003074          15.994915             14.003074"+"\n")
