@@ -1,3 +1,4 @@
+from re import I
 import numpy as np
 import os
 import shutil
@@ -25,7 +26,7 @@ Nr          = 1
 
 omegamin    = 0.0085
 omegamax    = 0.0085
-Nomega      = 2
+Nomega      = 5
 
 NPNT_max    = 12
 NPNT_min    = 10
@@ -34,7 +35,15 @@ thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "band_origin"
 nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculation. Note that levels are printed in 4-columns format in DVR3D.
 
-scan_coord = "1" # which of the radial coordinates we take as active in the scan
+scan_coord  = "1" # which of the radial coordinates we take as active in the scan
+
+partitions  = True # use partitioned job grid?
+Nbatches    = 3 # number of batches to be executed on different machines
+ibatch      = 1 # id of the present batch
+
+Npacks      = 2 # number of packets exectuted serially on a single machine
+
+#Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
 def gen_params_dict(*args):
 
@@ -57,14 +66,16 @@ def gen_params_dict(*args):
     params['NPNT_max']  = NPNT_max
     params['NPNT_incr'] = NPNT_incr
     params['thr']       = thr
-    params['convmode']      = convmode
+    params['convmode']  = convmode
     params['nlevels']   = nlevels
-
+    params['Nbatches']  = Nbatches
+    params['ibatch']    = ibatch
+    params['Npacks']    = Npacks
 
     return params
 
 def gen_grid3D():
-    """This function generates a 3D grid of basis set parameters, produces appropriate input files and submits DVR3D jobs.
+    """This function generates a 3D grid of basis set parameters, produces appropriate input files and submits DVR3D jobs. All jobs are executed simultaneously on a single machine. Suitable for HPCs.
     
         Note: for non-symmetric triatomic molecules (N2O) two separate sets of radial basis set parameters must be used. A 6D grid might be needed to find optimal radial basis parameters. 
     """
@@ -142,13 +153,127 @@ def gen_grid3D():
                 if proc_dvrrun.returncode == 0:
                     print("job finished succesfully!")
                 else:
-                    print("---###job unsuccesful###---")
+                    print("---###job unsuccesfull###---")
                     failed_list.append([iw,ir,inpnt])
                 
                 time.sleep(2)
                 outputfile.close()
                 errorfile.close()
                 os.chdir(path)
+
+    return params,rlist,omegalist,npntlist     
+
+
+def gen_grid3D_partitions():
+    """This function generates a 3D grid of basis set parameters, produces appropriate input files and submits DVR3D jobs. Jobs are partitioned into batches and packets. Suitable for small local computer clusters.
+    
+        Note: for non-symmetric triatomic molecules (N2O) two separate sets of radial basis set parameters must be used. A 6D grid might be needed to find optimal radial basis parameters. 
+    """
+    print("____DVR3D calculations on a 3D grid of basis set parameters___")
+
+    path        = os.getcwd()
+    START_FILES = os.listdir(path+"/START")
+    print ("The current working directory is %s" % path)
+
+    params = gen_params_dict(   NALF,    
+                                MAX3D,     
+                                De1,
+                                De2,
+                                NPNTfixed,
+                                omegafixed,
+                                refixed,  
+                                rmin,   
+                                rmax,   
+                                Nr,     
+                                omegamin,
+                                omegamax,    
+                                Nomega,   
+                                NPNT_max,   
+                                NPNT_min,   
+                                NPNT_incr,
+                                thr,         
+                                convmode,     
+                                nlevels,
+                                Nbatches,
+                                ibatch,
+                                Npacks )
+
+    rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
+    omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
+    npntlist    = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
+    failed_list = [] #list of failed jobs
+    proc_list   = [None for p in range(len(npntlist))]
+
+    Ntotal = len(npntlist) * len(omegalist) * len(rlist)
+    print("Total number of jobs = " + str(Ntotal))
+    batch_sizes = []
+    #for ibatch in range(Nbatches):
+    batch_size = int(Ntotal/Nbatches)
+    batch_reminder = Ntotal%Nbatches
+    print("Batch size = " + str(batch_size))
+    print("Batch reminder = " + str(batch_reminder))
+    print("Reconstructed total number of jobs = " + str(Nbatches*batch_size+batch_reminder))
+
+
+    pack_size = int(batch_size/Npacks)
+    pack_reminder = batch_size%Npacks
+    print("pack size = " + str(pack_size))
+    print("pack reminder = " + str(pack_reminder))
+    
+    exit()
+    for ir,r in enumerate(rlist):
+
+        for iw,w in enumerate(omegalist):
+
+            for inpnt, npnt in enumerate(npntlist):
+
+                if npnt >= 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt
+                elif npnt < 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
+                else:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
+
+                print("dirname: " + dirname)
+
+                try:
+                    os.mkdir(path+"/runs/"+dirname)
+                except OSError:
+                    print ("Creation of the directory %s failed" % dirname)
+                else:
+                    print ("Successfully created the directory %s " % dirname)
+
+        
+                for f in START_FILES: #copy all files from START to the active directory
+                    shutil.copy2(path+"/START/"+f, path+"/runs/"+dirname)
+
+
+                os.chdir(path+"/runs/"+dirname)
+                gen_input3D(params,r,w,npnt)
+                outputfile = open('dvr.out','w')
+                outputfile.write('Generated with dvr3dscan\n')
+                outputfile.flush()  
+
+                errorfile = open('dvr.err','w')
+                errorfile.write('Generated with dvr3dscan\n')
+                errorfile.flush()  
+                print("executing command: "+ executable)
+                
+                #
+
+                proc_list[inpnt] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
+
+                time.sleep(2)
+                outputfile.close()
+                errorfile.close()
+                os.chdir(path)
+
+                #proc_list.wait()
+            #print(proc_list)
+            exit_codes = [p.wait() for p in proc_list]
+            print("exit_codes: " +str(exit_codes))
+            failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
+            print(failed_list)
 
     return params,rlist,omegalist,npntlist     
 
@@ -268,6 +393,9 @@ def postprocess():
 if __name__ == '__main__':
 
     if mode == "run":
-        params,rlist,omegalist,npntlist = gen_grid3D()
+        if partitions == True:
+            params,rlist,omegalist,npntlist = gen_grid3D_partitions()
+        else:
+            params,rlist,omegalist,npntlist = gen_grid3D()
     elif mode == "analyze":
         postprocess()
