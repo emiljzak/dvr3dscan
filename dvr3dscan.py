@@ -5,7 +5,7 @@ import shutil
 import sys
 import time
 import subprocess
-
+import itertools
 
 mode        = "run" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
@@ -21,14 +21,14 @@ omegafixed  = 0.0305
 refixed     = 0.35
 
 rmin        = 3.9
-rmax        = 4.2
-Nr          = 1
+rmax        = 4.4
+Nr          = 5
 
 omegamin    = 0.0085
-omegamax    = 0.0085
+omegamax    = 0.0185
 Nomega      = 5
 
-NPNT_max    = 12
+NPNT_max    = 14
 NPNT_min    = 10
 NPNT_incr   = 1    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
@@ -41,7 +41,7 @@ partitions  = True # use partitioned job grid?
 Nbatches    = 3 # number of batches to be executed on different machines
 ibatch      = 1 # id of the present batch
 
-Npacks      = 2 # number of packets exectuted serially on a single machine
+Npacks      = 4 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -201,6 +201,10 @@ def gen_grid3D_partitions():
     rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
     omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
     npntlist    = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
+
+    G   = np.array(list(itertools.product(*[rlist, omegalist, npntlist]))) 
+
+
     failed_list = [] #list of failed jobs
     proc_list   = [None for p in range(len(npntlist))]
 
@@ -220,6 +224,18 @@ def gen_grid3D_partitions():
     print("pack size = " + str(pack_size))
     print("pack reminder = " + str(pack_reminder))
     
+    global_grid = []
+    batch_grid = [] #grid for single batch
+
+
+    for ip in range(batch_size):
+
+        for s in range(pack_size):
+    
+            batch_grid.append([G[s,0],G[s,1],G[s,2]])
+    
+        global_grid.append(batch_grid)
+    print(global_grid)
     exit()
     for ir,r in enumerate(rlist):
 
