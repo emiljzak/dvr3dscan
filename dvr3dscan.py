@@ -32,7 +32,7 @@ NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "band_origin"
-nlevels     = 10    # number of lowest J=0 energy levels taken in RMS calculation
+nlevels     = 5    # number of lowest J=0 energy levels taken in RMS calculation
 
 scan_coord = "1" # which of the radial coordinates we take as active in the scan
 
@@ -202,8 +202,9 @@ def postprocess():
 
 
     path        = os.getcwd()
+    energies = np.zeros((len(rlist),len(omegalist),len(npntlist),nlevels),dtype = float)
     rmsd = np.zeros((len(rlist),len(omegalist),len(npntlist)),dtype = float)
-
+    epoint = np.zeros((4,5))
     for ir,r in enumerate(rlist):
 
         for iw,w in enumerate(omegalist):
@@ -232,12 +233,17 @@ def postprocess():
                             flag =1
                             energylist = []
 
+                for i in range(4):
+                    epoint[i] = np.asarray(energylist[i],dtype=float)
 
-       
-                    print(energylist)
-    
-            #for i in range(energy.shape[0]):
-            #    rmsd[ir,iw] += (energy[])
+                energies[ir,iw,inpnt,:] = epoint[0]
+                print(energies)
+            
+            for k in range(energies.shape[3]-1):
+                rmsd[ir,iw,inpnt] += (energies[ir,iw,inpnt,k+1]-energies[ir,iw,inpnt,k])**2
+                rmsd /= energies.shape[3]
+                rmsd = np.sqrt(rmsd)
+            print(rmsd[ir,iw,inpnt])
 
     return rmsd
 
