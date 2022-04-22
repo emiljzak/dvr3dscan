@@ -12,26 +12,25 @@ import matplotlib.pyplot as plt
 executable  = "run.sh"
 inputfile   = "dvr.inp"
 
-NALF        = 80
+NALF        = 60
 MAX3D       = 2000
 
 De1         = 0.2
 De2         = 0.2
 NPNTfixed   = 50
-omegafixed  = 0.03
+omegafixed  = 0.0305
 refixed     = 0.35
 
+rmin        = 3.9
+rmax        = 4.2
+Nr          = 4
 
-rmin        = 0.25
-rmax        = 0.6
-Nr          = 1
-
-omegamin    = 0.01
-omegamax    = 0.2
+omegamin    = 0.0085
+omegamax    = 0.0085
 Nomega      = 1
 
-NPNT_max    = 30
-NPNT_min    = 20
+NPNT_max    = 60
+NPNT_min    = 50
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 mode        = "rms" # "band_origin"
@@ -81,9 +80,9 @@ def gen_grid3D():
                                 MAX3D,     
                                 De1,
                                 De2,
-                                NPNT1,
-                                omega2,
-                                re2,  
+                                NPNTfixed,
+                                omegafixed,
+                                refixed,  
                                 rmin,   
                                 rmax,   
                                 Nr,     
@@ -102,18 +101,18 @@ def gen_grid3D():
     npntlist   = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
 
 
-    for ir1,r1 in enumerate(rlist):
+    for ir,r in enumerate(rlist):
 
-        for iw1,w1 in enumerate(omegalist):
+        for iw,w in enumerate(omegalist):
 
-            for inpnt1, npnt1 in enumerate(npntlist):
+            for inpnt, npnt in enumerate(npntlist):
 
-                if npnt1 >= 100:
-                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%3d"%npnt1
-                elif npnt1 < 100:
-                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%2d"%npnt1
+                if npnt >= 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt
+                elif npnt < 100:
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
                 else:
-                    dirname = "r%1d"%ir1+"w%1d"%iw1+"N%1d"%npnt1
+                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
 
                 print("dirname: " + dirname)
 
@@ -130,8 +129,7 @@ def gen_grid3D():
 
 
                 os.chdir(path+"/runs/"+dirname)
-                gen_input3D(params,r1,w1,npnt1)
-                exit()
+                gen_input3D(params,r,w,npnt)
                 outputfile = open('dvr.out','w')
                 outputfile.write('Generated with dvr3dscan\n')
                 outputfile.flush()  
@@ -149,22 +147,28 @@ def gen_grid3D():
                 os.chdir(path)
         
 
-def gen_input3D(params,r2,w2,npnt2):
+def gen_input3D(params,r,w,npnt):
     with open(inputfile,'w') as inp:
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
+        if scan_coord == "1":
+            inp.write('{:5d}'.format(params['NPNTfixed']) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(npnt) + "\n") #kmin = 0 implicitly, see input explanation
+        elif scan_coord == "2":
+            inp.write('{:5d}'.format(npnt) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(params['NPNTfixed']) + "\n") #kmin = 0 implicitly, see input explanation
+        else:
+            raise ValueError("Incorrect name of the radial coordinate")
         #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
-        inp.write('{:5d}'.format(npnt2) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(params['NPNT1']) + "\n") #kmin = 0 implicitly, see input explanation
         inp.write(" N2O: JACOBI NON-SYMMETRISED COORDINATES, MASSES 14.003074 15.994915 NUCL 13.995394 15.986138"+"\n")
         inp.write("\n")
         inp.write("      14.003074          15.994915             14.003074"+"\n")
         inp.write("      14.003074          15.994915             14.003074"+"\n")                                                                      
         inp.write("      10005000.0"+"\n")
         if scan_coord == "1":
-            inp.write('{:11.2f}'.format(r1) +     '{:19.1f}'.format(De1) +  '{:23.4f}'.format(w1) +"\n") #r1 coordinate re, De, we
-            inp.write('{:11.2f}'.format(params['re2']) +  '{:19.1f}'.format(De2) +   '{:23.4f}'.format(params['omega2']) +"\n") #r2 coordinate re, De, we
+            inp.write('{:11.2f}'.format(r) +     '{:19.1f}'.format(De1) +  '{:23.4f}'.format(w) +"\n") #r1 coordinate re, De, we
+            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.1f}'.format(De2) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r2 coordinate re, De, we
         elif scan_coord == "2":
-
+            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.1f}'.format(De1) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r1 coordinate re, De, we
+            inp.write('{:11.2f}'.format(r) +     '{:19.1f}'.format(De2) +  '{:23.4f}'.format(w) +"\n") #r2 coordinate re, De, we
         else:
             raise ValueError("Incorrect name of the radial coordinate")
        
