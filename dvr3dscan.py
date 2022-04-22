@@ -6,8 +6,8 @@ import time
 import subprocess
 
 
-mode        = "analyze" #run
-executable  = "run.sh"
+mode        = "run" #run
+executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
 NALF        = 10
@@ -21,13 +21,13 @@ refixed     = 0.35
 
 rmin        = 3.9
 rmax        = 4.2
-Nr          = 4
+Nr          = 1
 
 omegamin    = 0.0085
 omegamax    = 0.0085
 Nomega      = 2
 
-NPNT_max    = 15
+NPNT_max    = 12
 NPNT_min    = 10
 NPNT_incr   = 1    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
@@ -96,8 +96,8 @@ def gen_grid3D():
 
     rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
     omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
-    npntlist   = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
-
+    npntlist    = list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int))
+    failed_list = [] #list of failed jobs
 
     for ir,r in enumerate(rlist):
 
@@ -136,12 +136,18 @@ def gen_grid3D():
                 errorfile.write('Generated with dvr3dscan\n')
                 errorfile.flush()  
                 print("executing command: "+ executable)
-                proc_dvrrun = subprocess.Popen(["./run.sh"], stdout=outputfile, stderr=errorfile, shell=True)
-
-                #p2 = subprocess.Popen(["ls", "-l"], stdout=subprocess.PIPE)
-                #stdout, stderr = p2.communicate()
-                #print(stdout)
-                #print(stderr)
+                proc_dvrrun = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
+                proc_dvrrun.wait()
+                
+                if proc_dvrrun.returncode == 0:
+                    print("job finished succesfully!")
+                else:
+                    print("---###job unsuccesful###---")
+                    failed_list.append([iw,ir,inpnt])
+                
+                time.sleep(2)
+                outputfile.close()
+                errorfile.close()
                 os.chdir(path)
 
     return params,rlist,omegalist,npntlist     
