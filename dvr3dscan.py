@@ -242,9 +242,9 @@ def gen_grid3D_partitions():
     print(global_grid)
     #exit()
     
-    for _,ipack in enumerate(global_grid[ibatch]):
+    for jj,ipack in enumerate(global_grid[ibatch]):
         for i,ijob in enumerate(ipack):
-
+            print("running " + str(jj) + "-th pack's job no. " + str(i))
             if ijob[2] >= 100:
                 dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
             elif ijob[2]  < 100:
@@ -288,9 +288,10 @@ def gen_grid3D_partitions():
 
             
         print(proc_list)
+        print("Shape of process list: " + str(np.shape(proc_list)))
         exit_codes = [p.wait() for p in proc_list]
 
-        for i,ijob in enumerate(ipack):
+        for _,ijob in enumerate(ipack):
 
             if ijob[2] >= 100:
                 dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
