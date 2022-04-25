@@ -289,6 +289,19 @@ def gen_grid3D_partitions():
             
         print(proc_list)
         exit_codes = [p.wait() for p in proc_list]
+
+        for i,ijob in enumerate(ipack):
+
+            if ijob[2] >= 100:
+                dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
+            elif ijob[2]  < 100:
+                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
+            else:
+                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
+
+            os.remove(path+"/runs/"+dirname+'/fort.16')
+            os.remove(path+"/runs/"+dirname+'/fort.15')   
+        
         print("exit_codes: " +str(exit_codes))
         failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
         print(failed_list)
