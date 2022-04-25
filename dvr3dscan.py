@@ -26,11 +26,11 @@ Nr          = 2
 
 omegamin    = 0.0085
 omegamax    = 0.0185
-Nomega      = 2
+Nomega      = 10
 
-NPNT_max    = 13
-NPNT_min    = 10
-NPNT_incr   = 1    # increment for NPNT
+NPNT_max    = 70
+NPNT_min    = 30
+NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "band_origin"
 nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculation. Note that levels are printed in 4-columns format in DVR3D.
@@ -38,10 +38,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 2 # number of batches to be executed on different machines
-ibatch      = 1 # id of the present batch
+Nbatches    = 3 # number of batches to be executed on different machines
+ibatch      = 0 # id of the present batch
 
-Npacks      = 2 # number of packets exectuted serially on a single machine
+Npacks      = 4 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -205,7 +205,7 @@ def gen_grid3D_partitions():
     G   = np.array(list(itertools.product(*[rlist, omegalist, npntlist]))) 
 
     failed_list = [] #list of failed jobs
-    proc_list   = [None for p in range(len(npntlist))]
+
 
     Ntotal      = len(npntlist) * len(omegalist) * len(rlist)
     print("Total number of jobs = " + str(Ntotal))
@@ -228,7 +228,7 @@ def gen_grid3D_partitions():
     print(np.shape(global_grid))
 
     #exit()
-   
+    proc_list   = [None for p in range(pack_size)]
     counter = 0
     for ib in range(Nbatches):
 
@@ -239,7 +239,7 @@ def gen_grid3D_partitions():
                 counter +=1
                 print(counter)
 
-    print(global_grid)
+
     #exit()
     
     for jj,ipack in enumerate(global_grid[ibatch]):
@@ -278,7 +278,7 @@ def gen_grid3D_partitions():
             print("executing command: "+ executable)
             
             #
-
+            print(i)
             proc_list[i] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
 
             time.sleep(2)
