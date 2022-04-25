@@ -22,13 +22,13 @@ refixed     = 0.35
 
 rmin        = 3.9
 rmax        = 4.4
-Nr          = 5
+Nr          = 2
 
 omegamin    = 0.0085
 omegamax    = 0.0185
-Nomega      = 5
+Nomega      = 2
 
-NPNT_max    = 14
+NPNT_max    = 13
 NPNT_min    = 10
 NPNT_incr   = 1    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
@@ -38,10 +38,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 3 # number of batches to be executed on different machines
+Nbatches    = 2 # number of batches to be executed on different machines
 ibatch      = 1 # id of the present batch
 
-Npacks      = 4 # number of packets exectuted serially on a single machine
+Npacks      = 2 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -204,16 +204,15 @@ def gen_grid3D_partitions():
 
     G   = np.array(list(itertools.product(*[rlist, omegalist, npntlist]))) 
 
-
     failed_list = [] #list of failed jobs
     proc_list   = [None for p in range(len(npntlist))]
 
-    Ntotal = len(npntlist) * len(omegalist) * len(rlist)
+    Ntotal      = len(npntlist) * len(omegalist) * len(rlist)
     print("Total number of jobs = " + str(Ntotal))
     batch_sizes = []
     #for ibatch in range(Nbatches):
-    batch_size = int(Ntotal/Nbatches)
-    batch_reminder = Ntotal%Nbatches
+    batch_size      = int(Ntotal/Nbatches)
+    batch_reminder  = Ntotal%Nbatches
     print("Batch size = " + str(batch_size))
     print("Batch reminder = " + str(batch_reminder))
     print("Reconstructed total number of jobs = " + str(Nbatches*batch_size+batch_reminder))
@@ -224,83 +223,86 @@ def gen_grid3D_partitions():
     print("pack size = " + str(pack_size))
     print("pack reminder = " + str(pack_reminder))
     
-    global_grid = []
-    batch_grid = [] #grid for single batch
+    #global_grid = [[[]] for i in range(Nbatches)]
+    global_grid = np.empty((Nbatches,Npacks,pack_size)).tolist()
+    print(np.shape(global_grid))
 
+    #exit()
+   
     counter = 0
-    for i in range(Nbatches):
-        for j in range(Npacks):
-            for ip in range(pack_size):    
-                batch_grid.append(G[counter,0:3])
+    for ib in range(Nbatches):
+
+        for ip in range(Npacks):
+            
+            for k in range(pack_size):    
+                global_grid[ib][ip][k] = G[counter,0:3]
                 counter +=1
                 print(counter)
-        global_grid.append(batch_grid)
+
     print(global_grid)
-    exit()
-    for ir,r in enumerate(rlist):
+    #exit()
+    
+    for _,ipack in enumerate(global_grid[ibatch]):
+        for i,ijob in enumerate(ipack):
 
-        for iw,w in enumerate(omegalist):
+            if ijob[2] >= 100:
+                dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
+            elif ijob[2]  < 100:
+                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
+            else:
+                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
 
-            for inpnt, npnt in enumerate(npntlist):
+            print("dirname: " + dirname)
 
-                if npnt >= 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt
-                elif npnt < 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
-                else:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
-
-                print("dirname: " + dirname)
-
-                try:
-                    os.mkdir(path+"/runs/"+dirname)
-                except OSError:
-                    print ("Creation of the directory %s failed" % dirname)
-                else:
-                    print ("Successfully created the directory %s " % dirname)
-
-        
-                for f in START_FILES: #copy all files from START to the active directory
-                    shutil.copy2(path+"/START/"+f, path+"/runs/"+dirname)
+            try:
+                os.mkdir(path+"/runs/"+dirname)
+            except OSError:
+                print ("Creation of the directory %s failed" % dirname)
+            else:
+                print ("Successfully created the directory %s " % dirname)
 
 
-                os.chdir(path+"/runs/"+dirname)
-                gen_input3D(params,r,w,npnt)
-                outputfile = open('dvr.out','w')
-                outputfile.write('Generated with dvr3dscan\n')
-                outputfile.flush()  
+            for f in START_FILES: #copy all files from START to the active directory
+                shutil.copy2(path+"/START/"+f, path+"/runs/"+dirname)
 
-                errorfile = open('dvr.err','w')
-                errorfile.write('Generated with dvr3dscan\n')
-                errorfile.flush()  
-                print("executing command: "+ executable)
-                
-                #
 
-                proc_list[inpnt] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
+            os.chdir(path+"/runs/"+dirname)
+            gen_input3D(params,ijob[0],ijob[1],ijob[2])
+            outputfile = open('dvr.out','w')
+            outputfile.write('Generated with dvr3dscan\n')
+            outputfile.flush()  
 
-                time.sleep(2)
-                outputfile.close()
-                errorfile.close()
-                os.chdir(path)
+            errorfile = open('dvr.err','w')
+            errorfile.write('Generated with dvr3dscan\n')
+            errorfile.flush()  
+            print("executing command: "+ executable)
+            
+            #
 
-                #proc_list.wait()
-            #print(proc_list)
-            exit_codes = [p.wait() for p in proc_list]
-            print("exit_codes: " +str(exit_codes))
-            failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
-            print(failed_list)
+            proc_list[i] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
 
-    return params,rlist,omegalist,npntlist     
+            time.sleep(2)
+            outputfile.close()
+            errorfile.close()
+            os.chdir(path)
+
+            
+        print(proc_list)
+        exit_codes = [p.wait() for p in proc_list]
+        print("exit_codes: " +str(exit_codes))
+        failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
+        print(failed_list)
+
+    return params
 
 def gen_input3D(params,r,w,npnt):
     with open(inputfile,'w') as inp:
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
         if scan_coord == "1":
-            inp.write('{:5d}'.format(params['NPNTfixed']) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(npnt) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(params['NPNTfixed'])) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(int(npnt)) + "\n") #kmin = 0 implicitly, see input explanation
         elif scan_coord == "2":
-            inp.write('{:5d}'.format(npnt) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(params['NPNTfixed']) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(npnt)) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(int(params['NPNTfixed'])) + "\n") #kmin = 0 implicitly, see input explanation
         else:
             raise ValueError("Incorrect name of the radial coordinate")
         #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
@@ -410,7 +412,7 @@ if __name__ == '__main__':
 
     if mode == "run":
         if partitions == True:
-            params,rlist,omegalist,npntlist = gen_grid3D_partitions()
+            params = gen_grid3D_partitions()
         else:
             params,rlist,omegalist,npntlist = gen_grid3D()
     elif mode == "analyze":
