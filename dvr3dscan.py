@@ -13,25 +13,25 @@ mode        = "analyze" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
-NALF        = 10
+NALF        = 60
 MAX3D       = 2000
 
 De1         = 0.2
 De2         = 0.2
-NPNTfixed   = 10
+NPNTfixed   = 50
 omegafixed  = 0.0305
 refixed     = 0.35
 
-rmin        = 3.9
-rmax        = 4.4
-Nr          = 4
+rmin        = 3.0
+rmax        = 5.0
+Nr          = 10
 
-omegamin    = 0.0085
-omegamax    = 0.0185
-Nomega      = 2
+omegamin    = 0.0005
+omegamax    = 0.02
+Nomega      = 5
 
-NPNT_max    = 40
-NPNT_min    = 10
+NPNT_max    = 80
+NPNT_min    = 30
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "origin"
@@ -40,10 +40,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 5 # number of batches to be executed on different machines
+Nbatches    = 4 # number of batches to be executed on different machines
 ibatch      = 0 # id of the present batch
 
-Npacks      = 2 # number of packets exectuted serially on a single machine
+Npacks      = 4 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
