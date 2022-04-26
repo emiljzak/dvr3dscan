@@ -5,6 +5,9 @@ import sys
 import time
 import subprocess
 import itertools
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import matplotlib
 
 mode        = "analyze" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
@@ -369,6 +372,7 @@ def postprocess():
     rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)-1,params['nlevels']),dtype = float)
     Ndiff       = energies.shape[2]-1 # number of differences taken wrt NPNT parameter
     NPNT_conv   = np.zeros((len(rlist),len(omegalist)),dtype=int)
+    NPNT_opt    =np.zeros((len(rlist),len(omegalist)),dtype=int)
 
     for ir,r in enumerate(rlist):
 
@@ -421,12 +425,16 @@ def postprocess():
                     mean_rmsd = np.average(rmsd,axis=3)
                     print("mean rmsd for lowest " + str(params['nlevels']) + " for NPNT = " + str(npntlist[k]) + " is: " + str(mean_rmsd[ir,iw,k]))
 
-                    if mean_rmsd[ir,iw] < thr:
+                    if mean_rmsd[ir,iw,k] < thr:
                         NPNT_conv[ir,iw] = np.argmin(mean_rmsd[ir,iw])
                         print("NPNT for the minimum mean rmsd is " + str(npntlist[NPNT_conv[ir,iw]]))
-                        print("NPNT for rmsd below the threshold of " + str(thr) + " is " + str(npntlist[NPNT_conv[ir,iw]]) )
+                        print("NPNT for rmsd below the threshold of " + str(thr) + " is " + str(npntlist[k]) )
+                        NPNT_opt[ir,iw] = npntlist[NPNT_conv[ir,iw]]
                     else:
-                        print("rmsd for all values of NPNT exceed threshold = " + str(thr)" . Assuming maximum NPNT = " + str(npntlist[-1]) + " for the map.")
+                        print("rmsd for all values of NPNT exceed threshold = " + str(thr)+ " . Assuming maximum NPNT = " + str(npntlist[-1]) + " for the map.")
+                        NPNT_opt[ir,iw] = npntlist[-1]
+
+            
             elif params['convmode'] == 'origin':
                 for k in range(Ndiff):
                     rmsd[ir,iw,0] += (energies[ir,iw,k+1,0]-energies[ir,iw,k,0])**2
@@ -434,8 +442,36 @@ def postprocess():
                 rmsd[ir,iw,0] /= Ndiff
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
-            
+    
+    plot_maps(rlist,omegalist,mean_rmsd,NPNT_opt)      
+    
     return rmsd,mean_rmsd
+
+def plot_maps(rlist,omegalist,rmsd,NPNT_opt):
+   
+    rwgrid = np.meshgrid(rlist,omegalist,indexing="ij")
+    #print(np.shape(rwgrid))
+    #print(rwgrid)
+
+    figsizex    = 50 #size of the figure on screen
+    figsizey    = 50  #size of the figure on screen
+    resolution  = 100  #resolution in dpi
+
+    fig         = plt.figure(   figsize = (figsizex, figsizey), 
+                                dpi     = resolution,
+                                constrained_layout = True)
+                                
+    grid_fig    = gridspec.GridSpec(ncols=1, nrows=1, figure=fig)
+    ax         = fig.add_subplot(grid_fig[0, 0], projection='rectilinear')
+
+    cmap        = matplotlib.cm.jet #jet, cool, etc
+    norm        = matplotlib.colors.Normalize(vmin=0, vmax=50)
+    plot_W2D  = ax.contour(     rwgrid[0], 
+                                rwgrid[1], 
+                                NPNT_opt,  
+                                10, 
+                                cmap = 'jet')
+    plt.show()
 
 if __name__ == '__main__':
 
