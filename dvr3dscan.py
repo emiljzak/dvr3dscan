@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib
 
-mode        = "run" #run
+mode        = "analyze" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
@@ -311,7 +311,7 @@ def gen_grid3D_partitions():
         failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
         print(failed_list)
 
-    return params
+    return params,global_grid
 
 def gen_input3D(params,r,w,npnt):
     with open(inputfile,'w') as inp:
@@ -413,7 +413,8 @@ def postprocess():
                 elevels_flat            = elevels.reshape(-1)
                 energies[ir,iw,inpnt,:] = elevels_flat
             
-           
+            rmsd_obs = compare_obscalc(energies)
+            exit()
             if params['convmode'] == 'rms':  
                 for k in range(Ndiff):
                     for h in range(params['nlevels']):
@@ -445,9 +446,42 @@ def postprocess():
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
     os.chdir(path)
+    
+    
+    
     plot_maps(params,rlist,omegalist,mean_rmsd,NPNT_opt)      
     
     return rmsd,mean_rmsd
+
+def read_obs():
+    eobs = []
+    with open('obs','r') as file:
+        for line in file:
+            words = line.split()
+            eobs.append(words[0])
+
+    return eobs
+
+
+def compare_obscalc(energies):
+    eobs = read_obs()
+    eobs = np.asarray(eobs,dtype=float)
+    nobs = eobs.shape[0]
+    rmsd = np.zeros((energies.shape[0],energies.shape[1],energies.shape[2]),dtype=float)
+
+    for ir in range(energies.shape[0]):
+        for iw in range(energies.shape[1]):
+            for inpnt in range(energies.shape[2]):
+                for ilevel in range(nobs):
+                    rmsd[ir,iw,inpnt] += (energies[ir,iw,inpnt,ilevel]-eobs[ilevel])**2
+    
+                rmsd[ir,iw,inpnt] /= nobs
+                rmsd[ir,iw,inpnt] = np.sqrt(rmsd[ir,iw,inpnt])
+
+    print("rmsd with respect to observed energy levels:")
+    print(rmsd)
+
+    return rmsd
 
 def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
    
