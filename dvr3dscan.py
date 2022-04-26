@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib
 
-mode        = "analyze" #run
+mode        = "run" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
@@ -24,7 +24,7 @@ refixed     = 0.35
 
 rmin        = 3.9
 rmax        = 4.4
-Nr          = 2
+Nr          = 4
 
 omegamin    = 0.0085
 omegamax    = 0.0185
@@ -40,10 +40,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 1 # number of batches to be executed on different machines
+Nbatches    = 5 # number of batches to be executed on different machines
 ibatch      = 0 # id of the present batch
 
-Npacks      = 1 # number of packets exectuted serially on a single machine
+Npacks      = 2 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -209,36 +209,39 @@ def gen_grid3D_partitions():
     failed_list = [] #list of failed jobs
 
 
-    Ntotal      = len(npntlist) * len(omegalist) * len(rlist)
+    Ntotal              = len(npntlist) * len(omegalist) * len(rlist)
     print("Total number of jobs = " + str(Ntotal))
-    batch_sizes = []
-    #for ibatch in range(Nbatches):
-    batch_size      = int(Ntotal/Nbatches)
-    batch_reminder  = Ntotal%Nbatches
+    batch_sizes         = []
+    batch_size          = int(Ntotal/Nbatches)
+    reminder_batch_size = Ntotal%Nbatches
     print("Batch size = " + str(batch_size))
-    print("Batch reminder = " + str(batch_reminder))
-    print("Reconstructed total number of jobs = " + str(Nbatches*batch_size+batch_reminder))
+    print("Reminder batch size = " + str(reminder_batch_size))
+    print("Reconstructed total number of jobs = " + str(Nbatches*batch_size+reminder_batch_size))
 
-
-    pack_size = int(batch_size/Npacks)
-    pack_reminder = batch_size%Npacks
+    pack_size           = int(batch_size/Npacks)
+    reminder_pack_size  = batch_size%Npacks
     print("pack size = " + str(pack_size))
-    print("pack reminder = " + str(pack_reminder))
-    
-    #global_grid = [[[]] for i in range(Nbatches)]
-    global_grid = np.empty((Nbatches,Npacks,pack_size)).tolist()
+    print("pack reminder = " + str(reminder_pack_size))
+
+
+    global_grid         = np.empty((Nbatches,Npacks,pack_size)).tolist()
+    print("Total number of jobs in the grid = " + str(Nbatches*Npacks*pack_size))
+    #exit()
     print(np.shape(global_grid))
 
     #exit()
     proc_list   = [None for p in range(pack_size)]
-    counter = 0
+    counter     = 0
     for ib in range(Nbatches):
 
         for ip in range(Npacks):
             
-            for k in range(pack_size):    
+            for k in range(pack_size):
+
                 global_grid[ib][ip][k] = G[counter,0:3]
                 counter +=1
+                
+                
                 print(counter)
 
 
@@ -246,6 +249,7 @@ def gen_grid3D_partitions():
     
     for jj,ipack in enumerate(global_grid[ibatch]):
         for i,ijob in enumerate(ipack):
+
             print("running " + str(jj) + "-th pack's job no. " + str(i))
             if ijob[2] >= 100:
                 dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
@@ -279,8 +283,6 @@ def gen_grid3D_partitions():
             errorfile.flush()  
             print("executing command: "+ executable)
             
-            #
-            print(i)
             proc_list[i] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
 
             time.sleep(2)
@@ -372,7 +374,7 @@ def postprocess():
     rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)-1,params['nlevels']),dtype = float)
     Ndiff       = energies.shape[2]-1 # number of differences taken wrt NPNT parameter
     NPNT_conv   = np.zeros((len(rlist),len(omegalist)),dtype=int)
-    NPNT_opt    =np.zeros((len(rlist),len(omegalist)),dtype=int)
+    NPNT_opt    = np.zeros((len(rlist),len(omegalist)),dtype=int)
 
     for ir,r in enumerate(rlist):
 
@@ -467,7 +469,7 @@ def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
     cmap        = matplotlib.cm.jet #jet, cool, etc
     norm        = matplotlib.colors.Normalize(vmin=0, vmax=50)
 
-    plot_npnt    = ax.contour(     rwgrid[0], 
+    plot_npnt    = ax.contour(  rwgrid[0], 
                                 rwgrid[1], 
                                 NPNT_opt,  
                                 10, 
@@ -479,6 +481,7 @@ def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
     fig.savefig(    fname       =   "NPNT_map.pdf",
                     dpi         =   resolution       )
     plt.close()
+
 if __name__ == '__main__':
 
     if mode == "run":
