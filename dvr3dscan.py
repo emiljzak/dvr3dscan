@@ -413,8 +413,7 @@ def postprocess():
                 elevels_flat            = elevels.reshape(-1)
                 energies[ir,iw,inpnt,:] = elevels_flat
             
-            rmsd_obs = compare_obscalc(energies)
-            exit()
+
             if params['convmode'] == 'rms':  
                 for k in range(Ndiff):
                     for h in range(params['nlevels']):
@@ -446,7 +445,8 @@ def postprocess():
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
     os.chdir(path)
-    
+    rmsd_obs = compare_obscalc(energies)
+    exit()
     
     
     plot_maps(params,rlist,omegalist,mean_rmsd,NPNT_opt)      
