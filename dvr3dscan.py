@@ -31,7 +31,7 @@ NPNT_max    = 40
 NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
-convmode    = "rms" # "band_origin"
+convmode    = "rms" # "origin"
 nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculation. Note that levels are printed in 4-columns format in DVR3D.
 
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
@@ -366,8 +366,9 @@ def postprocess():
     path        = os.getcwd()
     elevels     = np.zeros((int(params['nlevels']/5),5),dtype=float)
     energies    = np.zeros((len(rlist),len(omegalist),len(npntlist),params['nlevels']),dtype = float)
-    rmsd        = np.zeros((len(rlist),len(omegalist),params['nlevels']),dtype = float)
+    rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)-1,params['nlevels']),dtype = float)
     Ndiff       = energies.shape[2]-1 # number of differences taken wrt NPNT parameter
+    NPNT_conv   = np.zeros((len(rlist),len(omegalist)),dtype=int)
 
     for ir,r in enumerate(rlist):
 
@@ -407,29 +408,33 @@ def postprocess():
                 energies[ir,iw,inpnt,:] = elevels_flat
             
            
-            if params['convmode'] == 'rms':
-                for h in range(params['nlevels']):
-                    for k in range(Ndiff):
-                        rmsd[ir,iw,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
+            if params['convmode'] == 'rms':  
+                for k in range(Ndiff):
+                    for h in range(params['nlevels']):
+                    
+                        rmsd[ir,iw,k,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
 
-                    rmsd[ir,iw,h] /= Ndiff
-                    rmsd[ir,iw,h] = np.sqrt(rmsd[ir,iw,h])
-                    print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,h]))
+                    rmsd[ir,iw,k,h] /= params['nlevels']
+                    rmsd[ir,iw,k,h] = np.sqrt(rmsd[ir,iw,k,h])
+                    print("rmsd for r= " + str(r) + " omega= " + str(w) + " NPNT = " + str(npntlist[k]) + " is: "  + str(rmsd[ir,iw,k,h]))
                 
-                mean_rmsd = np.average(rmsd,axis=2)
-                print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(mean_rmsd))
-                
+                    mean_rmsd = np.average(rmsd,axis=3)
+                    print("mean rmsd for lowest " + str(params['nlevels']) + " for NPNT = " + str(npntlist[k]) + " is: " + str(mean_rmsd[ir,iw,k]))
+
+                    if mean_rmsd[ir,iw] < thr:
+                        NPNT_conv[ir,iw] = np.argmin(mean_rmsd[ir,iw])
+                        print("NPNT for the minimum mean rmsd is " + str(npntlist[NPNT_conv[ir,iw]]))
+                        print("NPNT for rmsd below the threshold of " + str(thr) + " is " + str(npntlist[NPNT_conv[ir,iw]]) )
+                    else:
+                        print("rmsd for all values of NPNT exceed threshold = " + str(thr)" . Assuming maximum NPNT = " + str(npntlist[-1]) + " for the map.")
             elif params['convmode'] == 'origin':
                 for k in range(Ndiff):
                     rmsd[ir,iw,0] += (energies[ir,iw,k+1,0]-energies[ir,iw,k,0])**2
 
                 rmsd[ir,iw,0] /= Ndiff
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
-                print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,0]))
+                print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
             
-            mean_rmsd = rmsd
-            print("mean rmsd for band origin is: " + str(mean_rmsd))
-
     return rmsd,mean_rmsd
 
 if __name__ == '__main__':
