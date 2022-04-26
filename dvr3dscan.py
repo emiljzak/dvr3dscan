@@ -1,4 +1,3 @@
-from re import I
 import numpy as np
 import os
 import shutil
@@ -7,7 +6,7 @@ import time
 import subprocess
 import itertools
 
-mode        = "run" #run
+mode        = "analyze" #run
 executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
@@ -26,10 +25,10 @@ Nr          = 2
 
 omegamin    = 0.0085
 omegamax    = 0.0185
-Nomega      = 10
+Nomega      = 2
 
-NPNT_max    = 70
-NPNT_min    = 30
+NPNT_max    = 40
+NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "band_origin"
@@ -38,10 +37,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 3 # number of batches to be executed on different machines
+Nbatches    = 1 # number of batches to be executed on different machines
 ibatch      = 0 # id of the present batch
 
-Npacks      = 4 # number of packets exectuted serially on a single machine
+Npacks      = 1 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -365,10 +364,10 @@ def postprocess():
 
 
     path        = os.getcwd()
-    elevels    = np.zeros((int(params['nlevels']/5),5),dtype=float)
+    elevels     = np.zeros((int(params['nlevels']/5),5),dtype=float)
     energies    = np.zeros((len(rlist),len(omegalist),len(npntlist),params['nlevels']),dtype = float)
     rmsd        = np.zeros((len(rlist),len(omegalist),params['nlevels']),dtype = float)
-    epoint      = np.zeros((4,5))
+    Ndiff       = energies.shape[2]-1 # number of differences taken wrt NPNT parameter
 
     for ir,r in enumerate(rlist):
 
@@ -377,12 +376,11 @@ def postprocess():
             for inpnt, npnt in enumerate(npntlist):
 
                 if npnt >= 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%3d"%npnt
-                elif npnt < 100:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%2d"%npnt
+                    dirname = "r%2.1f"%r+"w%5.4f"%w+"N%3d"%npnt 
+                elif npnt  < 100:
+                    dirname = "r%2.1f"%r+"w%5.4f"%w+"N%2d"%npnt 
                 else:
-                    dirname = "r%1d"%ir+"w%1d"%iw+"N%1d"%npnt
-
+                    dirname = "r%2.1f"%r+"w%5.4f"%w+"N%1d"%npnt 
                 print("dirname: " + dirname)
                 os.chdir(path+"/runs/"+dirname)
 
@@ -405,21 +403,33 @@ def postprocess():
                         for ienergy,energy in enumerate(elem):
                             elevels[ielem,ienergy] = energy
 
-                elevels_flat = elevels.reshape(-1)
-                print(energies.shape)
-                print(elevels_flat.shape)
+                elevels_flat            = elevels.reshape(-1)
                 energies[ir,iw,inpnt,:] = elevels_flat
             
-            Ndiff = energies.shape[2]-1 #number of differences taken wrt NPNT parameter
-            
-            for h in range(params['nlevels']):
+           
+            if params['convmode'] == 'rms':
+                for h in range(params['nlevels']):
+                    for k in range(Ndiff):
+                        rmsd[ir,iw,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
+
+                    rmsd[ir,iw,h] /= Ndiff
+                    rmsd[ir,iw,h] = np.sqrt(rmsd[ir,iw,h])
+                    print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,h]))
+                
+                mean_rmsd = np.average(rmsd,axis=2)
+                print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(mean_rmsd))
+                
+            elif params['convmode'] == 'origin':
                 for k in range(Ndiff):
-                    rmsd[ir,iw,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
-                rmsd[ir,iw,h] /= Ndiff
-                rmsd[ir,iw,h] = np.sqrt(rmsd[ir,iw,h])
-                print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,h]))
-            mean_rmsd = np.average(rmsd,axis=2)
-    print("mean rmsd for lowest " + str(params['nlevels']) + " is: " + str(mean_rmsd))
+                    rmsd[ir,iw,0] += (energies[ir,iw,k+1,0]-energies[ir,iw,k,0])**2
+
+                rmsd[ir,iw,0] /= Ndiff
+                rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
+                print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(h)+ " is: "  + str(rmsd[ir,iw,0]))
+            
+            mean_rmsd = rmsd
+            print("mean rmsd for band origin is: " + str(mean_rmsd))
+
     return rmsd,mean_rmsd
 
 if __name__ == '__main__':
