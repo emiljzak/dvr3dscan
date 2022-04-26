@@ -442,12 +442,12 @@ def postprocess():
                 rmsd[ir,iw,0] /= Ndiff
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
-    
-    plot_maps(rlist,omegalist,mean_rmsd,NPNT_opt)      
+    os.chdir(path)
+    plot_maps(params,rlist,omegalist,mean_rmsd,NPNT_opt)      
     
     return rmsd,mean_rmsd
 
-def plot_maps(rlist,omegalist,rmsd,NPNT_opt):
+def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
    
     rwgrid = np.meshgrid(rlist,omegalist,indexing="ij")
     #print(np.shape(rwgrid))
@@ -462,17 +462,23 @@ def plot_maps(rlist,omegalist,rmsd,NPNT_opt):
                                 constrained_layout = True)
                                 
     grid_fig    = gridspec.GridSpec(ncols=1, nrows=1, figure=fig)
-    ax         = fig.add_subplot(grid_fig[0, 0], projection='rectilinear')
+    ax          = fig.add_subplot(grid_fig[0, 0], projection='rectilinear')
 
     cmap        = matplotlib.cm.jet #jet, cool, etc
     norm        = matplotlib.colors.Normalize(vmin=0, vmax=50)
-    plot_W2D  = ax.contour(     rwgrid[0], 
+
+    plot_npnt    = ax.contour(     rwgrid[0], 
                                 rwgrid[1], 
                                 NPNT_opt,  
                                 10, 
                                 cmap = 'jet')
-    plt.show()
+    #plt.show()
 
+    plt.colorbar(plot_npnt, ax=ax, aspect=30) 
+
+    fig.savefig(    fname       =   "NPNT_map.pdf",
+                    dpi         =   resolution       )
+    plt.close()
 if __name__ == '__main__':
 
     if mode == "run":
