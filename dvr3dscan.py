@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import glob
 import shutil
 import sys
 import time
@@ -306,12 +307,22 @@ def gen_grid3D_partitions():
 
             os.remove(path+"/runs/"+dirname+'/fort.16')
             os.remove(path+"/runs/"+dirname+'/fort.15')   
-        
+            remove_forts(path+"/runs/"+dirname)
+            
         print("exit_codes: " +str(exit_codes))
         failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
         print(failed_list)
 
     return params,global_grid
+
+def remove_forts(path):
+    filelist = glob.glob(path+'/fort*')
+    for filepath in filelist:
+        try:
+            os.remove(filepath)
+        except:
+            print("unable to remove path: " + str(filepath))
+
 
 def gen_input3D(params,r,w,npnt):
     with open(inputfile,'w') as inp:
