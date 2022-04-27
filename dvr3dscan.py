@@ -15,7 +15,7 @@ executable  = "./dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
 NALF        = 60
-MAX3D       = 2000
+MAX3D       = 4000
 
 De1         = 0.2
 De2         = 0.2
@@ -74,7 +74,7 @@ def gen_params_dict(*args):
     params['Nbatches']  = Nbatches
     params['ibatch']    = ibatch
     params['Npacks']    = Npacks
-
+    params['mode']      = mode
     return params
 
 def gen_grid3D():
@@ -199,7 +199,8 @@ def gen_grid3D_partitions():
                                 nlevels,
                                 Nbatches,
                                 ibatch,
-                                Npacks )
+                                Npacks,
+                                mode )
 
     rlist       = list(np.linspace(params['rmin'],params['rmax'],params['Nr'],endpoint=True))
     omegalist   = list(np.linspace(params['omegamin'],params['omegamax'],params['Nomega'],endpoint=True))
@@ -243,15 +244,12 @@ def gen_grid3D_partitions():
                 counter +=1
                 
                 
-                print(counter)
+                #print(counter)
 
-
-    #exit()
-    
+    #exit()    
     for jj,ipack in enumerate(global_grid[ibatch]):
         for i,ijob in enumerate(ipack):
-
-            print("running " + str(jj) + "-th pack's job no. " + str(i))
+     
             if ijob[2] >= 100:
                 dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
             elif ijob[2]  < 100:
@@ -261,6 +259,7 @@ def gen_grid3D_partitions():
 
             print("dirname: " + dirname)
 
+            print("running " + str(jj) + "-th pack's job no. " + str(i))
             try:
                 os.mkdir(path+"/runs/"+dirname)
             except OSError:
@@ -268,7 +267,7 @@ def gen_grid3D_partitions():
             else:
                 print ("Successfully created the directory %s " % dirname)
 
-
+            
             for f in START_FILES: #copy all files from START to the active directory
                 shutil.copy2(path+"/START/"+f, path+"/runs/"+dirname)
 
@@ -305,10 +304,8 @@ def gen_grid3D_partitions():
             else:
                 dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
 
-            os.remove(path+"/runs/"+dirname+'/fort.16')
-            os.remove(path+"/runs/"+dirname+'/fort.15')   
             remove_forts(path+"/runs/"+dirname)
-            
+
         print("exit_codes: " +str(exit_codes))
         failed_list.append( [i for i, e in enumerate(exit_codes) if e != 0] )
         print(failed_list)
