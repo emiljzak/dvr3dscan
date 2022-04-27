@@ -326,9 +326,9 @@ def gen_input3D(params,r,w,npnt):
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
         if scan_coord == "1":
-            inp.write('{:5d}'.format(int(params['NPNTfixed'])) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(int(npnt)) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(params['NPNTfixed'])) + "    0   60"+'{:5d}'.format(int(NALF))+" 4000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(npnt)) + "\n") #kmin = 0 implicitly, see input explanation
         elif scan_coord == "2":
-            inp.write('{:5d}'.format(int(npnt)) + "    0   60   50 4000 4000    1    2" +'{:5d}'.format(int(params['NPNTfixed'])) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(npnt)) + "    0   60"+'{:5d}'.format(int(NALF))+" 4000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(params['NPNTfixed'])) + "\n") #kmin = 0 implicitly, see input explanation
         else:
             raise ValueError("Incorrect name of the radial coordinate")
         #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
