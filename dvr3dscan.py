@@ -348,7 +348,7 @@ def gen_input3D(params,r,w,npnt):
 
 
 def postprocess():
-    """This function exctracts appropriate energy levels from DVR3D output files and calculates appropriate RMSDs
+    """This function exctracts energy levels from DVR3D output files and calculates appropriate RMSDs
     """
 
     params = gen_params_dict(   NALF,    
@@ -379,7 +379,7 @@ def postprocess():
     path        = os.getcwd()
     elevels     = np.zeros((int(params['nlevels']/5),5),dtype=float)
     energies    = np.zeros((len(rlist),len(omegalist),len(npntlist),params['nlevels']),dtype = float)
-    rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)-1,params['nlevels']),dtype = float)
+    rmsd        = np.zeros((len(rlist),len(omegalist),len(npntlist)-1),dtype = float)
     Ndiff       = energies.shape[2]-1 # number of differences taken wrt NPNT parameter
     NPNT_conv   = np.zeros((len(rlist),len(omegalist)),dtype=int)
     NPNT_opt    = np.zeros((len(rlist),len(omegalist)),dtype=int)
@@ -426,17 +426,17 @@ def postprocess():
                 for k in range(Ndiff):
                     for h in range(params['nlevels']):
                     
-                        rmsd[ir,iw,k,h] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
+                        rmsd[ir,iw,k] += (energies[ir,iw,k+1,h]-energies[ir,iw,k,h])**2
 
-                    rmsd[ir,iw,k,h] /= params['nlevels']
-                    rmsd[ir,iw,k,h] = np.sqrt(rmsd[ir,iw,k,h])
-                    print("rmsd for r= " + str(r) + " omega= " + str(w) + " NPNT = " + str(npntlist[k]) + " is: "  + str(rmsd[ir,iw,k,h]))
+                    rmsd[ir,iw,k] /= params['nlevels']
+                    rmsd[ir,iw,k] = np.sqrt(rmsd[ir,iw,k])
+                    print("rmsd for r= " + str(r) + " omega= " + str(w) + " NPNT = " + str(npntlist[k]) + " is: "  + str(rmsd[ir,iw,k]))
                 
-                    mean_rmsd = np.average(rmsd,axis=3)
-                    print("mean rmsd for lowest " + str(params['nlevels']) + " for NPNT = " + str(npntlist[k]) + " is: " + str(mean_rmsd[ir,iw,k]))
+                    #mean_rmsd = np.average(rmsd,axis=3)
+                    #print("mean rmsd for lowest " + str(params['nlevels']) + " for NPNT = " + str(npntlist[k]) + " is: " + str(mean_rmsd[ir,iw,k]))
 
-                    if mean_rmsd[ir,iw,k] < thr:
-                        NPNT_conv[ir,iw] = np.argmin(mean_rmsd[ir,iw])
+                    if rmsd[ir,iw,k] < thr:
+                        NPNT_conv[ir,iw] = np.argmin(rmsd[ir,iw])
                         print("NPNT for the minimum mean rmsd is " + str(npntlist[NPNT_conv[ir,iw]]))
                         print("NPNT for rmsd below the threshold of " + str(thr) + " is " + str(npntlist[k]) )
                         NPNT_opt[ir,iw] = npntlist[NPNT_conv[ir,iw]]
@@ -452,14 +452,13 @@ def postprocess():
                 rmsd[ir,iw,0] /= Ndiff
                 rmsd[ir,iw,0] = np.sqrt(rmsd[ir,iw,0])
                 print("rmsd for r= " + str(r) + " omega= " + str(w) + " ID= " +str(0)+ " is: "  + str(rmsd[ir,iw,0]))
+    
+    
     os.chdir(path)
-    rmsd_obs = compare_obscalc(energies)
-    exit()
+    rmsd_obs = compare_obscalc(energies)    
+    plot_maps(params,rlist,omegalist,rmsd,NPNT_opt)      
     
-    
-    plot_maps(params,rlist,omegalist,mean_rmsd,NPNT_opt)      
-    
-    return rmsd,mean_rmsd
+    return rmsd
 
 def read_obs():
     eobs = []
@@ -493,6 +492,9 @@ def compare_obscalc(energies):
 
 def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
    
+
+    N_Npnt = len(list(np.arange(params['NPNT_min'],params['NPNT_max'],params['NPNT_incr'],dtype=int)))
+
     rwgrid = np.meshgrid(rlist,omegalist,indexing="ij")
     #print(np.shape(rwgrid))
     #print(rwgrid)
@@ -501,9 +503,7 @@ def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
     figsizey    = 50  #size of the figure on screen
     resolution  = 100  #resolution in dpi
 
-    fig         = plt.figure(   figsize = (figsizex, figsizey), 
-                                dpi     = resolution,
-                                constrained_layout = True)
+    fig         = plt.figure()
                                 
     grid_fig    = gridspec.GridSpec(ncols=1, nrows=1, figure=fig)
     ax          = fig.add_subplot(grid_fig[0, 0], projection='rectilinear')
@@ -514,14 +514,13 @@ def plot_maps(params,rlist,omegalist,rmsd,NPNT_opt):
     plot_npnt    = ax.contour(  rwgrid[0], 
                                 rwgrid[1], 
                                 NPNT_opt,  
-                                10, 
+                                N_Npnt, 
                                 cmap = 'jet')
     #plt.show()
 
     plt.colorbar(plot_npnt, ax=ax, aspect=30) 
 
-    fig.savefig(    fname       =   "NPNT_map.pdf",
-                    dpi         =   resolution       )
+    fig.savefig(    fname       =   "NPNT_map.pdf"   )
     plt.close()
 
 if __name__ == '__main__':
