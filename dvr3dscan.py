@@ -10,29 +10,29 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib
 
-mode        = "analyze" #run
-executable  = "."+os.getcwd()+"/dvr.n2o.Sch.x<dvr.inp"
+mode        = "run" #run
+executable  = os.getcwd()+"/dvr.n2o.Sch.x"
 inputfile   = "dvr.inp"
 
-NALF        = 60
+NALF        = 20
 MAX3D       = 4000
 
 De1         = 0.2
 De2         = 0.2
-NPNTfixed   = 50
+NPNTfixed   = 20
 omegafixed  = 0.0305
 refixed     = 0.35
 
 rmin        = 3.0
 rmax        = 5.0
-Nr          = 10
+Nr          = 2
 
 omegamin    = 0.0005
 omegamax    = 0.02
-Nomega      = 5
+Nomega      = 1
 
-NPNT_max    = 80
-NPNT_min    = 30
+NPNT_max    = 20
+NPNT_min    = 10
 NPNT_incr   = 10    # increment for NPNT
 thr         = 1.0   # convergence threshold in cm^-1
 convmode    = "rms" # "origin"
@@ -41,10 +41,10 @@ nlevels     = 20    # number of lowest J=0 energy levels taken in RMS calculatio
 scan_coord  = "1" # which of the radial coordinates we take as active in the scan
 
 partitions  = True # use partitioned job grid?
-Nbatches    = 4 # number of batches to be executed on different machines
+Nbatches    = 1 # number of batches to be executed on different machines
 ibatch      = 0 # id of the present batch
 
-Npacks      = 4 # number of packets exectuted serially on a single machine
+Npacks      = 1 # number of packets exectuted serially on a single machine
 
 #Note: we divide the entire job into batches and packets. Batches represent runs on independent machines, while individual packets are collections of jobs executed simulatenously on a single machine. 
 
@@ -149,8 +149,8 @@ def gen_grid3D():
                 errorfile = open('dvr.err','w')
                 errorfile.write('Generated with dvr3dscan\n')
                 errorfile.flush()  
-                print("executing command: "+ executable)
-                proc_dvrrun = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
+                print("executing command: "+ executable+"<"+path+"/runs/"+dirname+"/dvr.inp")
+                proc_dvrrun = subprocess.Popen([executable+"<"+path+"/runs/"+dirname+"/dvr.inp"], stdout=outputfile, stderr=errorfile, shell=True)
                 proc_dvrrun.wait()
                 
                 if proc_dvrrun.returncode == 0:
@@ -281,9 +281,9 @@ def gen_grid3D_partitions():
             errorfile = open('dvr.err','w')
             errorfile.write('Generated with dvr3dscan\n')
             errorfile.flush()  
-            print("executing command: "+ executable)
+            print("executing command: "+ executable+"<"+path+"/runs/"+dirname+"/dvr.inp")
             
-            proc_list[i] = subprocess.Popen([executable], stdout=outputfile, stderr=errorfile, shell=True)
+            proc_list[i] = subprocess.Popen([executable+"<"+path+"/runs/"+dirname+"/dvr.inp"], stdout=outputfile, stderr=errorfile, shell=True)
 
             time.sleep(2)
             outputfile.close()
