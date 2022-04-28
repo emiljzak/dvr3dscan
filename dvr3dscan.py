@@ -11,7 +11,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib
 
 mode        = "analyze" #run
-executable  = "./dvr.n2o.Sch.x<dvr.inp"
+executable  = "."+os.getcwd()+"/dvr.n2o.Sch.x<dvr.inp"
 inputfile   = "dvr.inp"
 
 NALF        = 60
