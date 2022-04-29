@@ -251,11 +251,11 @@ def gen_grid3D_partitions():
         for i,ijob in enumerate(ipack):
      
             if ijob[2] >= 100:
-                dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
             elif ijob[2]  < 100:
-                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
             else:
-                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
 
             print("dirname: " + dirname)
 
@@ -298,11 +298,11 @@ def gen_grid3D_partitions():
         for _,ijob in enumerate(ipack):
 
             if ijob[2] >= 100:
-                dirname = "r%2.1f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0] +"w%5.4f"%ijob[1]+"N%3d"%ijob[2] 
             elif ijob[2]  < 100:
-                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0]+"w%5.4f"%ijob[1]+"N%2d"%ijob[2] 
             else:
-                dirname = "r%2.1f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
+                dirname = "r%3.2f"%ijob[0]+"w%5.4f"%ijob[1]+"N%1d"%ijob[2] 
 
             remove_forts(path+"/runs/"+dirname)
 
@@ -326,9 +326,9 @@ def gen_input3D(params,r,w,npnt):
         inp.write("&PRT zrot=.true.,ztran=.true.,zlin=.true.,zpfun=.true.,ztheta=.false.,zr2r1=.false.,zembed=.false. /"+"\n") 
         inp.write("    3"+"\n")
         if scan_coord == "1":
-            inp.write('{:5d}'.format(int(params['NPNTfixed'])) + "    0   60"+'{:5d}'.format(int(NALF))+" 4000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(npnt)) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(params['NPNTfixed'])) + "    0   60"+'{:5d}'.format(int(NALF))+" 8000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(npnt)) + "\n") #kmin = 0 implicitly, see input explanation
         elif scan_coord == "2":
-            inp.write('{:5d}'.format(int(npnt)) + "    0   60"+'{:5d}'.format(int(NALF))+" 4000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(params['NPNTfixed'])) + "\n") #kmin = 0 implicitly, see input explanation
+            inp.write('{:5d}'.format(int(npnt)) + "    0   60"+'{:5d}'.format(int(NALF))+" 8000"+'{:5d}'.format(int(MAX3D))+"    1    2" +'{:5d}'.format(int(params['NPNTfixed'])) + "\n") #kmin = 0 implicitly, see input explanation
         else:
             raise ValueError("Incorrect name of the radial coordinate")
         #inp.write("   50    0   60   50 4000 4000    1    2   50    "+"\n") #kmin = 0 implicitly, see input explanation
@@ -338,11 +338,11 @@ def gen_input3D(params,r,w,npnt):
         inp.write("      14.003074          15.994915             14.003074"+"\n")                                                                      
         inp.write("      10005000.0"+"\n")
         if scan_coord == "1":
-            inp.write('{:11.2f}'.format(r) +     '{:19.1f}'.format(De1) +  '{:23.4f}'.format(w) +"\n") #r1 coordinate re, De, we
-            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.1f}'.format(De2) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r2 coordinate re, De, we
+            inp.write('{:11.2f}'.format(r) +     '{:19.2f}'.format(De1) +  '{:23.4f}'.format(w) +"\n") #r1 coordinate re, De, we
+            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.2f}'.format(De2) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r2 coordinate re, De, we
         elif scan_coord == "2":
-            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.1f}'.format(De1) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r1 coordinate re, De, we
-            inp.write('{:11.2f}'.format(r) +     '{:19.1f}'.format(De2) +  '{:23.4f}'.format(w) +"\n") #r2 coordinate re, De, we
+            inp.write('{:11.2f}'.format(params['refixed']) +  '{:19.2f}'.format(De1) +   '{:23.4f}'.format(params['omegafixed']) +"\n") #r1 coordinate re, De, we
+            inp.write('{:11.2f}'.format(r) +     '{:19.2f}'.format(De2) +  '{:23.4f}'.format(w) +"\n") #r2 coordinate re, De, we
         else:
             raise ValueError("Incorrect name of the radial coordinate")
 
